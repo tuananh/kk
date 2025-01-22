@@ -5,7 +5,7 @@ Cursor IDE allows you to press Ctrl+K in the terminal and type the question & it
 
 This tool allows you to do the same thing with any terminal.
 
-<script src="https://asciinema.org/a/twerL1fmCtkhrcr5XeOPsW2UD.js" id="asciicast-twerL1fmCtkhrcr5XeOPsW2UD" async="true"></script>
+[![asciicast](https://asciinema.org/a/twerL1fmCtkhrcr5XeOPsW2UD.svg)](https://asciinema.org/a/twerL1fmCtkhrcr5XeOPsW2UD)
 
 ## Usage
 
