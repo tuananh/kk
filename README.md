@@ -5,6 +5,10 @@ Cursor IDE allows you to press Ctrl+K in the terminal and type the question & it
 
 This tool allows you to do the same thing with any terminal.
 
+<script src="https://asciinema.org/a/twerL1fmCtkhrcr5XeOPsW2UD.js" id="asciicast-twerL1fmCtkhrcr5XeOPsW2UD" async="true"></script>
+
+## Usage
+
 If your terminal allows you to bind a key to a command, you can bind `Ctrl+K` to this tool.
 
 For example with Kitty, you can add the following to your `kitty.conf`:
