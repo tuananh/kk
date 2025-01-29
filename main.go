@@ -159,6 +159,11 @@ func main() {
 	var inputText string
 	inputField := tview.NewInputField()
 
+	// Create a TextView for the "Esc to close" message
+	escTextView := tview.NewTextView().
+		SetText("Esc to close").
+		SetTextColor(tcell.ColorGray)
+
 	// Load the last 10 prompts
 	lastPrompts, err := getLastNPrompts(10)
 	if err != nil {
@@ -218,7 +223,8 @@ func main() {
 
 	flex := tview.NewFlex().
 		SetDirection(tview.FlexRow).
-		AddItem(inputField, 3, 1, true) // Input field only
+		AddItem(inputField, 1, 1, true).  // Adjusted height for input field
+		AddItem(escTextView, 1, 0, false) // Place the TextView directly below
 
 	app.SetFocus(inputField)
 	app.SetRoot(flex, true)
