@@ -69,7 +69,7 @@ func main() {
 	inputField := tview.NewInputField()
 
 	inputField.
-		SetLabel("Enter query: ").
+		SetLabel("Write CLI command for: ").
 		SetFieldWidth(30).
 		SetDoneFunc(func(key tcell.Key) {
 			if key == tcell.KeyEnter {
@@ -88,9 +88,9 @@ func main() {
 
 	flex := tview.NewFlex().
 		SetDirection(tview.FlexRow).
-		AddItem(tview.NewBox().SetBackgroundColor(tcell.ColorDefault), 0, 1, false).
-		AddItem(nil, 0, 1, false).
 		AddItem(inputField, 3, 1, true).
+		AddItem(nil, 0, 1, false).
+		AddItem(tview.NewBox().SetBackgroundColor(tcell.ColorDefault), 0, 1, false).
 		AddItem(nil, 0, 1, false)
 
 	if err := app.SetRoot(flex, true).Run(); err != nil {

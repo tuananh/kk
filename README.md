@@ -11,7 +11,13 @@ This tool allows you to do the same thing with any terminal.
 
 If your terminal allows you to bind a key to a command, you can bind `Ctrl+K` to this tool.
 
-For example with Kitty, you can add the following to your `kitty.conf`:
+If you use Ghostty, you can add the following to your `config`:
+
+```
+keybind = ctrl+k=text:kk\x0d
+```
+
+If you use Kitty, you can add the following to your `kitty.conf`:
 
 ```
 map ctrl+k launch --type=overlay kk
