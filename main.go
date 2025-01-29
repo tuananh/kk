@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/go-vgo/robotgo"
@@ -51,10 +52,100 @@ func queryOpenAI(input string) (string, error) {
 				if content, ok := message["content"].(string); ok {
 					return content, nil
 				}
+
 			}
 		}
 	}
 	return "", fmt.Errorf("unexpected response format")
+}
+
+func savePromptToHistory(prompt string) error {
+	if prompt == "" {
+		return nil // Do not save empty prompts
+	}
+
+	historyFilePath := "/tmp/kk-history.jsonl"
+	data, err := os.ReadFile(historyFilePath)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return err
+		}
+		// If the file does not exist, initialize an empty data slice
+		data = []byte{}
+	}
+
+	lines := strings.Split(string(data), "\n")
+	var prompts []string
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+		var promptData map[string]string
+		if err := json.Unmarshal([]byte(line), &promptData); err != nil {
+			return err
+		}
+		if existingPrompt, ok := promptData["prompt"]; ok && existingPrompt == prompt {
+			return nil // Do not save if prompt already exists
+		}
+		prompts = append(prompts, line)
+	}
+
+	// Add the new prompt
+	promptData := map[string]string{"prompt": prompt}
+	jsonData, err := json.Marshal(promptData)
+	if err != nil {
+		return err
+	}
+	prompts = append(prompts, string(jsonData))
+
+	// Keep only the last 10 prompts
+	if len(prompts) > 10 {
+		prompts = prompts[len(prompts)-10:]
+	}
+
+	// Write back to the file
+	file, err := os.OpenFile(historyFilePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	for _, p := range prompts {
+		if _, err := file.WriteString(p + "\n"); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func getLastNPrompts(n int) ([]string, error) {
+	historyFilePath := "/tmp/kk-history.jsonl"
+	data, err := os.ReadFile(historyFilePath)
+	if err != nil {
+		return nil, err
+	}
+
+	lines := strings.Split(string(data), "\n")
+	var prompts []string
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+		var promptData map[string]string
+		if err := json.Unmarshal([]byte(line), &promptData); err != nil {
+			return nil, err
+		}
+		if prompt, ok := promptData["prompt"]; ok {
+			prompts = append(prompts, prompt)
+		}
+	}
+
+	if len(prompts) > n {
+		prompts = prompts[len(prompts)-n:] // Get the last n prompts
+	}
+
+	return prompts, nil
 }
 
 func main() {
@@ -68,13 +159,29 @@ func main() {
 	var inputText string
 	inputField := tview.NewInputField()
 
+	// Load the last 10 prompts
+	lastPrompts, err := getLastNPrompts(10)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to load prompt history: %v\n", err)
+	}
+
+	currentPromptIndex := len(lastPrompts) // Start at the end of the list
+
 	inputField.
 		SetLabel("Write CLI command for: ").
-		SetFieldWidth(30).
+		SetFieldWidth(80).
+		SetPlaceholder("Press up/down to navigate history").
+		SetFieldBackgroundColor(tcell.ColorLightBlue).
+		SetFieldTextColor(tcell.ColorBlack).
+		SetPlaceholderTextColor(tcell.ColorBlack).
 		SetDoneFunc(func(key tcell.Key) {
 			if key == tcell.KeyEnter {
 				inputText = inputField.GetText()
 				app.Stop()
+
+				if err := savePromptToHistory(inputText); err != nil {
+					fmt.Fprintf(os.Stderr, "failed to save prompt to history: %v\n", err)
+				}
 
 				command, err := queryOpenAI(inputText)
 				if err != nil {
@@ -84,16 +191,39 @@ func main() {
 
 				robotgo.TypeStr(command)
 			}
+		}).
+		SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+			switch event.Key() {
+			case tcell.KeyUp:
+				if currentPromptIndex > 0 {
+					currentPromptIndex--
+					inputField.SetText(lastPrompts[currentPromptIndex])
+				}
+				return nil
+			case tcell.KeyDown:
+				if currentPromptIndex < len(lastPrompts)-1 {
+					currentPromptIndex++
+					inputField.SetText(lastPrompts[currentPromptIndex])
+				} else {
+					currentPromptIndex = len(lastPrompts) // Reset to allow new input
+					inputField.SetText("")
+				}
+				return nil
+			case tcell.KeyEscape:
+				app.Stop()
+				return nil
+			}
+			return event
 		})
 
 	flex := tview.NewFlex().
 		SetDirection(tview.FlexRow).
-		AddItem(inputField, 3, 1, true).
-		AddItem(nil, 0, 1, false).
-		AddItem(tview.NewBox().SetBackgroundColor(tcell.ColorDefault), 0, 1, false).
-		AddItem(nil, 0, 1, false)
+		AddItem(inputField, 3, 1, true) // Input field only
 
-	if err := app.SetRoot(flex, true).Run(); err != nil {
+	app.SetFocus(inputField)
+	app.SetRoot(flex, true)
+
+	if err := app.Run(); err != nil {
 		panic(err)
 	}
 }
