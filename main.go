@@ -14,6 +14,7 @@ import (
 )
 
 var openaiAPIKey = os.Getenv("OPENAI_API_KEY")
+var historyFilePath = "/tmp/kk-history.jsonl" // Global variable for history file path
 
 func queryOpenAI(input string) (string, error) {
 	url := "https://api.openai.com/v1/chat/completions"
@@ -64,14 +65,19 @@ func savePromptToHistory(prompt string) error {
 		return nil // Do not save empty prompts
 	}
 
-	historyFilePath := "/tmp/kk-history.jsonl"
 	data, err := os.ReadFile(historyFilePath)
 	if err != nil {
-		if !os.IsNotExist(err) {
+		if os.IsNotExist(err) {
+			// If the file does not exist, create it
+			file, err := os.Create(historyFilePath)
+			if err != nil {
+				return err
+			}
+			file.Close()
+			data = []byte{}
+		} else {
 			return err
 		}
-		// If the file does not exist, initialize an empty data slice
-		data = []byte{}
 	}
 
 	lines := strings.Split(string(data), "\n")
@@ -120,7 +126,6 @@ func savePromptToHistory(prompt string) error {
 }
 
 func getLastNPrompts(n int) ([]string, error) {
-	historyFilePath := "/tmp/kk-history.jsonl"
 	data, err := os.ReadFile(historyFilePath)
 	if err != nil {
 		return nil, err
@@ -152,6 +157,16 @@ func main() {
 	if openaiAPIKey == "" {
 		fmt.Fprintf(os.Stderr, "Error: OPENAI_API_KEY environment variable not set\n")
 		os.Exit(1)
+	}
+
+	// Ensure the prompt history file exists
+	if _, err := os.Stat(historyFilePath); os.IsNotExist(err) {
+		file, err := os.Create(historyFilePath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to create prompt history file: %v\n", err)
+			os.Exit(1)
+		}
+		file.Close()
 	}
 
 	app := tview.NewApplication()
